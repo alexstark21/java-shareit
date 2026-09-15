@@ -12,7 +12,7 @@ public class ItemMapper {
         return dto;
     }
 
-    public static Item toItem(ItemDto dto) {
+    public static Item toItem(ItemCreateDto dto) {
         if (dto == null) return null;
         Item item = new Item();
         item.setId(dto.getId());

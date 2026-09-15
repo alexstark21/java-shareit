@@ -17,32 +17,31 @@ public class ItemServiceImpl implements ItemService {
     private final UserRepository userRepository;
 
     @Override
-    public ItemDto createItem(Long userId, ItemDto itemDto) {
-        User owner = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("Пользователь с id " + userId + " не найден"));
-
-        Item item = ItemMapper.toItem(itemDto);
+    public ItemDto createItem(Long userId, ItemCreateDto itemCreateDto) {
+        User owner = findUserOrThrow(userId);
+        Item item = ItemMapper.toItem(itemCreateDto);
         item.setOwner(owner);
         return ItemMapper.toItemDto(itemRepository.save(item));
     }
 
     @Override
-    public ItemDto updateItem(Long userId, Long itemId, ItemDto itemDto) {
-        Item item = itemRepository.findById(itemId)
-                .orElseThrow(() -> new NotFoundException("Вещь с id " + itemId + " не найдена"));
+    public ItemDto updateItem(Long userId, Long itemId, ItemUpdateDto itemUpdateDto) {
+        findUserOrThrow(userId);
+
+        Item item = findItemOrThrow(itemId);
 
         if (!item.getOwner().getId().equals(userId)) {
             throw new NotFoundException("Редактировать вещь может только её владелец");
         }
 
-        if (itemDto.getName() != null && !itemDto.getName().isBlank()) {
-            item.setName(itemDto.getName());
+        if (itemUpdateDto.getName() != null && !itemUpdateDto.getName().isBlank()) {
+            item.setName(itemUpdateDto.getName());
         }
-        if (itemDto.getDescription() != null && !itemDto.getDescription().isBlank()) {
-            item.setDescription(itemDto.getDescription());
+        if (itemUpdateDto.getDescription() != null && !itemUpdateDto.getDescription().isBlank()) {
+            item.setDescription(itemUpdateDto.getDescription());
         }
-        if (itemDto.getAvailable() != null) {
-            item.setAvailable(itemDto.getAvailable());
+        if (itemUpdateDto.getAvailable() != null) {
+            item.setAvailable(itemUpdateDto.getAvailable());
         }
 
         return ItemMapper.toItemDto(itemRepository.update(item));
@@ -50,8 +49,7 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     public ItemDto getItemById(Long itemId) {
-        Item item = itemRepository.findById(itemId)
-                .orElseThrow(() -> new NotFoundException("Вещь с id " + itemId + " не найдена"));
+        Item item = findItemOrThrow(itemId);
         return ItemMapper.toItemDto(item);
     }
 
@@ -70,5 +68,15 @@ public class ItemServiceImpl implements ItemService {
         return itemRepository.search(text).stream()
                 .map(ItemMapper::toItemDto)
                 .collect(Collectors.toList());
+    }
+
+    private User findUserOrThrow(Long id) {
+        return userRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Пользователь с id " + id + " не найден"));
+    }
+
+    private Item findItemOrThrow(Long itemId) {
+        return itemRepository.findById(itemId)
+                .orElseThrow(() -> new NotFoundException("Вещь с id " + itemId + " не найдена"));
     }
 }

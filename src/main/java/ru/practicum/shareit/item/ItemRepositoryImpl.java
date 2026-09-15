@@ -2,7 +2,10 @@ package ru.practicum.shareit.item;
 
 import org.springframework.stereotype.Repository;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Repository
@@ -37,9 +40,6 @@ public class ItemRepositoryImpl implements ItemRepository {
 
     @Override
     public Collection<Item> search(String text) {
-        if (text == null || text.isBlank()) {
-            return Collections.emptyList();
-        }
         String lowerText = text.toLowerCase();
         return items.values().stream()
                 .filter(Item::getAvailable)
