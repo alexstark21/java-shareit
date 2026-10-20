@@ -165,13 +165,14 @@
                     <version>0.8.12</version>
                     <executions>
                         <execution>
+                            <id>jacoco-prepare-agent</id>
                             <goals>
                                 <goal>prepare-agent</goal>
                             </goals>
                         </execution>
 
                         <execution>
-                            <id>check</id>
+                            <id>jacoco-check</id>
                             <goals>
                                 <goal>check</goal>
                             </goals>
@@ -192,6 +193,7 @@
                         </execution>
 
                         <execution>
+                            <id>jacoco-report</id>
                             <goals>
                                 <goal>report</goal>
                             </goals>
