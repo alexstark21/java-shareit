@@ -37,8 +37,8 @@ public class BookingServiceImpl implements BookingService {
             throw new BadRequestException("Вещь недоступна для бронирования");
         }
         if (dto.getStart() == null || dto.getEnd() == null ||
-                !dto.getStart().isBefore(dto.getEnd()) || !dto.getStart().isAfter(LocalDateTime.now())) {
-            throw new ConflictException("Даты бронирования указаны некорректно");
+                !dto.getStart().isBefore(dto.getEnd()) || dto.getStart().isBefore(LocalDateTime.now())) {
+            throw new BadRequestException("Даты бронирования указаны некорректно");
         }
         if (bookingRepository.hasOverlap(item.getId(), dto.getStart(), dto.getEnd())) {
             throw new ConflictException("Вещь уже забронирована на эти даты");
