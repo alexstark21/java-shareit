@@ -58,10 +58,23 @@ public class ItemServiceImpl implements ItemService {
 
     @Override
     @Transactional(readOnly = true)
-    public ItemDto getItemById(Long itemId) {
+    public ItemDto getItemById(Long itemId, Long userId) {
         Item item = findItemOrThrow(itemId);
         ItemDto dto = ItemMapper.toItemDto(item);
         dto.setComments(getComments(itemId));
+
+        if (item.getOwner().getId().equals(userId)) {
+            LocalDateTime now = LocalDateTime.now();
+            List<Booking> approved = bookingRepository.findAllByItemIdAndStatus(itemId, BookingStatus.APPROVED);
+
+            Booking last = approved.stream()
+                    .filter(b -> !b.getStart().isAfter(now))
+                    .max(Comparator.comparing(Booking::getStart))
+                    .orElse(null);
+
+            setBookings(dto, now, approved, last);
+        }
+
         return dto;
     }
 
@@ -89,11 +102,7 @@ public class ItemServiceImpl implements ItemService {
 
             Booking last = approved.stream().filter(b -> !b.getEnd().isAfter(now))
                     .max(Comparator.comparing(Booking::getEnd)).orElse(null);
-            Booking next = approved.stream().filter(b -> b.getStart().isAfter(now))
-                    .min(Comparator.comparing(Booking::getStart)).orElse(null);
-
-            dto.setLastBooking(last == null ? null : BookingMapper.toDto(last));
-            dto.setNextBooking(next == null ? null : BookingMapper.toDto(next));
+            setBookings(dto, now, approved, last);
 
             List<CommentDto> comments = commentsByItem.getOrDefault(item.getId(), Collections.emptyList()).stream()
                     .map(CommentMapper::toCommentDto)
@@ -143,5 +152,15 @@ public class ItemServiceImpl implements ItemService {
     private Item findItemOrThrow(Long itemId) {
         return itemRepository.findById(itemId)
                 .orElseThrow(() -> new NotFoundException("Вещь с id " + itemId + " не найдена"));
+    }
+
+    private void setBookings(ItemDto dto, LocalDateTime now, List<Booking> approved, Booking last) {
+        Booking next = approved.stream()
+                .filter(b -> b.getStart().isAfter(now))
+                .min(Comparator.comparing(Booking::getStart))
+                .orElse(null);
+
+        dto.setLastBooking(last == null ? null : BookingMapper.toDto(last));
+        dto.setNextBooking(next == null ? null : BookingMapper.toDto(next));
     }
 }
