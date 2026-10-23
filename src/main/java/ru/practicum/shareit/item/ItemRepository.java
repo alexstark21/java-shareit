@@ -5,9 +5,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
+import java.util.List;
 
 public interface ItemRepository extends JpaRepository<Item, Long> {
-    Collection<Item> findAllByOwnerIdOrderById(Long ownerId);
+    List<Item> findAllByOwnerIdOrderById(Long ownerId);
 
     @Query("select i from Item i where i.available = true and " +
             "(lower(i.name) like lower(concat('%', :text, '%')) or " +

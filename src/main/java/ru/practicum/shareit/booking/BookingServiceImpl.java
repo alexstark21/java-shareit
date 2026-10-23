@@ -40,13 +40,11 @@ public class BookingServiceImpl implements BookingService {
                 !dto.getStart().isBefore(dto.getEnd()) || !dto.getStart().isAfter(LocalDateTime.now())) {
             throw new ConflictException("Даты бронирования указаны некорректно");
         }
-        Booking b = new Booking();
-        b.setStart(dto.getStart());
-        b.setEnd(dto.getEnd());
-        b.setItem(item);
-        b.setBooker(booker);
-        b.setStatus(BookingStatus.WAITING);
-        return BookingMapper.toDto(bookingRepository.save(b));
+        if (bookingRepository.hasOverlap(item.getId(), dto.getStart(), dto.getEnd())) {
+            throw new ConflictException("Вещь уже забронирована на эти даты");
+        }
+        Booking booking = BookingMapper.toBooking(dto, item, booker);
+        return BookingMapper.toDto(bookingRepository.save(booking));
     }
 
     @Override
@@ -65,11 +63,9 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional(readOnly = true)
     public BookingDto get(Long userId, Long bookingId) {
-        Booking b = findBooking(bookingId);
-        if (!b.getBooker().getId().equals(userId) && !b.getItem().getOwner().getId().equals(userId)) {
-            throw new NotFoundException("Нет доступа к бронированию");
-        }
-        return BookingMapper.toDto(b);
+        Booking booking = bookingRepository.findByIdAndBookerIdOrItemOwnerId(bookingId, userId)
+                .orElseThrow(() -> new NotFoundException("Бронирование не найдено или у вас нет к нему доступа"));
+        return BookingMapper.toDto(booking);
     }
 
     @Override
