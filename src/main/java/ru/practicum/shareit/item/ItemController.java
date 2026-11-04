@@ -26,8 +26,8 @@ public class ItemController {
     }
 
     @GetMapping("/{itemId}")
-    public ItemDto getItemById(@PathVariable Long itemId) {
-        return itemService.getItemById(itemId);
+    public ItemDto getItemById(@RequestHeader(USER_ID_HEADER) Long userId, @PathVariable Long itemId) {
+        return itemService.getItemById(itemId, userId);
     }
 
     @GetMapping
@@ -38,5 +38,12 @@ public class ItemController {
     @GetMapping("/search")
     public Collection<ItemDto> searchItems(@RequestParam String text) {
         return itemService.searchItems(text);
+    }
+
+    @PostMapping("/{itemId}/comment")
+    public CommentDto addComment(@RequestHeader(USER_ID_HEADER) Long userId,
+                                 @PathVariable Long itemId,
+                                 @Valid @RequestBody CommentCreateDto dto) {
+        return itemService.addComment(userId, itemId, dto);
     }
 }

@@ -7,9 +7,11 @@ public interface ItemService {
 
     ItemDto updateItem(Long userId, Long itemId, ItemUpdateDto itemDto);
 
-    ItemDto getItemById(Long itemId);
+    ItemDto getItemById(Long itemId, Long userId);
 
     Collection<ItemDto> getOwnerItems(Long userId);
 
     Collection<ItemDto> searchItems(String text);
+
+    CommentDto addComment(Long userId, Long itemId, CommentCreateDto dto);
 }

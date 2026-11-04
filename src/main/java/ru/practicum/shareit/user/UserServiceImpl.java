@@ -36,7 +36,7 @@ public class UserServiceImpl implements UserService {
             user.setName(userDto.getName());
         }
 
-        return UserMapper.toUserDto(userRepository.update(user));
+        return UserMapper.toUserDto(userRepository.save(user));
     }
 
     @Override
@@ -54,7 +54,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public void deleteUser(Long userId) {
         findUserOrThrow(userId);
-        userRepository.delete(userId);
+        userRepository.deleteById(userId);
     }
 
     private void validateEmailUniqueness(String email) {
