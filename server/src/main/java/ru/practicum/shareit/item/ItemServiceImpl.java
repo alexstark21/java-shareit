@@ -9,6 +9,7 @@ import ru.practicum.shareit.booking.BookingRepository;
 import ru.practicum.shareit.booking.BookingStatus;
 import ru.practicum.shareit.exception.BadRequestException;
 import ru.practicum.shareit.exception.NotFoundException;
+import ru.practicum.shareit.request.ItemRequestRepository;
 import ru.practicum.shareit.user.User;
 import ru.practicum.shareit.user.UserRepository;
 
@@ -24,11 +25,20 @@ public class ItemServiceImpl implements ItemService {
     private final UserRepository userRepository;
     private final CommentRepository commentRepository;
     private final BookingRepository bookingRepository;
+    private final ItemRequestRepository itemRequestRepository;
 
     @Override
     public ItemDto createItem(Long userId, ItemCreateDto itemCreateDto) {
         User owner = findUserOrThrow(userId);
         Item item = ItemMapper.toItem(itemCreateDto);
+
+        if (itemCreateDto.getRequestId() != null) {
+            Long requestId = itemCreateDto.getRequestId();
+            itemRequestRepository.findById(requestId).orElseThrow(() -> new NotFoundException(
+                    "Запрос с id " + requestId + " не найден"));
+            item.setRequestId(requestId);
+        }
+
         item.setOwner(owner);
         return ItemMapper.toItemDto(itemRepository.save(item));
     }

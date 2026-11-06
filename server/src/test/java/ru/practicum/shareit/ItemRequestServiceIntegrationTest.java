@@ -2,6 +2,7 @@ package ru.practicum.shareit;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.PersistenceContext;
 import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,10 +12,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.exception.NotFoundException;
-import ru.practicum.shareit.item.ItemRepository;
-import ru.practicum.shareit.request.*;
+import ru.practicum.shareit.request.ItemRequest;
+import ru.practicum.shareit.request.ItemRequestCreateDto;
+import ru.practicum.shareit.request.ItemRequestDto;
+import ru.practicum.shareit.request.ItemRequestService;
 import ru.practicum.shareit.user.User;
-import ru.practicum.shareit.user.UserRepository;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -29,16 +31,7 @@ class ItemRequestServiceIntegrationTest {
     @Autowired
     private ItemRequestService requestService;
 
-    @Autowired
-    private ItemRequestRepository requestRepository;
-
-    @Autowired
-    private ItemRepository itemRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
+    @PersistenceContext
     private EntityManager entityManager;
 
     @Autowired
@@ -50,9 +43,9 @@ class ItemRequestServiceIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        requestor = IntegrationTestData.user(userRepository, "Requestor", "requestor@example.com");
-        responder = IntegrationTestData.user(userRepository, "Responder", "responder@example.com");
-        viewer = IntegrationTestData.user(userRepository, "Viewer", "viewer@example.com");
+        requestor = IntegrationTestData.user(entityManager, "Requestor", "requestor@example.com");
+        responder = IntegrationTestData.user(entityManager, "Responder", "responder@example.com");
+        viewer = IntegrationTestData.user(entityManager, "Viewer", "viewer@example.com");
     }
 
     @Test
@@ -73,12 +66,12 @@ class ItemRequestServiceIntegrationTest {
     @Test
     void shouldReturnOwnRequestsNewestFirstWithResponseItems() {
         LocalDateTime now = LocalDateTime.now();
-        ItemRequest older = IntegrationTestData.request(requestRepository, requestor,
+        ItemRequest older = IntegrationTestData.request(entityManager, requestor,
                 "Older request", now.minusDays(2));
-        ItemRequest newer = IntegrationTestData.request(requestRepository, requestor,
+        ItemRequest newer = IntegrationTestData.request(entityManager, requestor,
                 "Newer request", now.minusDays(1));
-        IntegrationTestData.item(itemRepository, responder, "Bicycle", true, older.getId());
-        IntegrationTestData.item(itemRepository, responder, "Helmet", true, newer.getId());
+        IntegrationTestData.item(entityManager, responder, "Bicycle", true, older.getId());
+        IntegrationTestData.item(entityManager, responder, "Helmet", true, newer.getId());
 
         List<ItemRequestDto> requests = List.copyOf(requestService.getOwn(requestor.getId()));
 
@@ -94,10 +87,10 @@ class ItemRequestServiceIntegrationTest {
     @Test
     void shouldReturnOnlyOtherUsersRequests() {
         LocalDateTime now = LocalDateTime.now();
-        IntegrationTestData.request(requestRepository, requestor, "My request", now.minusDays(3));
-        ItemRequest other = IntegrationTestData.request(requestRepository, responder,
+        IntegrationTestData.request(entityManager, requestor, "My request", now.minusDays(3));
+        ItemRequest other = IntegrationTestData.request(entityManager, responder,
                 "Other request", now.minusDays(1));
-        IntegrationTestData.request(requestRepository, viewer, "Another request", now.minusDays(2));
+        IntegrationTestData.request(entityManager, viewer, "Another request", now.minusDays(2));
 
         Collection<ItemRequestDto> requests = requestService.getAllOthers(requestor.getId());
 
@@ -108,9 +101,9 @@ class ItemRequestServiceIntegrationTest {
 
     @Test
     void shouldReturnRequestByIdWithResponseItems() {
-        ItemRequest request = IntegrationTestData.request(requestRepository, requestor,
+        ItemRequest request = IntegrationTestData.request(entityManager, requestor,
                 "Need a tent", LocalDateTime.now());
-        IntegrationTestData.item(itemRepository, responder, "Tent", true, request.getId());
+        IntegrationTestData.item(entityManager, responder, "Tent", true, request.getId());
 
         ItemRequestDto found = requestService.getById(request.getId());
 
@@ -124,10 +117,10 @@ class ItemRequestServiceIntegrationTest {
     void shouldLoadResponsesWithoutNPlusOneQueries() {
         LocalDateTime now = LocalDateTime.now();
         for (int index = 0; index < 5; index++) {
-            ItemRequest request = IntegrationTestData.request(requestRepository, requestor,
+            ItemRequest request = IntegrationTestData.request(entityManager, requestor,
                     "Request " + index, now.minusMinutes(index));
             for (int itemIndex = 0; itemIndex < 3; itemIndex++) {
-                IntegrationTestData.item(itemRepository, responder,
+                IntegrationTestData.item(entityManager, responder,
                         "Item " + index + "-" + itemIndex, true, request.getId());
             }
         }

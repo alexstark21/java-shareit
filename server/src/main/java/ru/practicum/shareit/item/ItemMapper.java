@@ -19,7 +19,6 @@ public class ItemMapper {
         item.setName(dto.getName());
         item.setDescription(dto.getDescription());
         item.setAvailable(dto.getAvailable());
-        item.setRequestId(dto.getRequestId());
         return item;
     }
 }

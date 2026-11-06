@@ -9,7 +9,6 @@ import ru.practicum.shareit.item.ItemRepository;
 import ru.practicum.shareit.user.User;
 import ru.practicum.shareit.user.UserRepository;
 
-import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -27,11 +26,8 @@ public class ItemRequestServiceImpl implements ItemRequestService {
     @Override
     public ItemRequestDto create(Long userId, ItemRequestCreateDto dto) {
         User requestor = findUser(userId);
-        ItemRequest request = new ItemRequest();
-        request.setDescription(dto.getDescription().trim());
-        request.setRequestor(requestor);
-        request.setCreated(LocalDateTime.now());
-        return toDto(requestRepository.save(request), List.of());
+        ItemRequest request = ItemRequestMapper.toItemRequest(dto, requestor);
+        return ItemRequestMapper.toDto(requestRepository.save(request), List.of());
     }
 
     @Override
@@ -82,18 +78,8 @@ public class ItemRequestServiceImpl implements ItemRequestService {
                 ));
 
         return requests.stream()
-                .map(request -> toDto(request, itemsByRequest.getOrDefault(request.getId(), List.of())))
-                .collect(Collectors.toList());
-    }
-
-    private ItemRequestDto toDto(ItemRequest request, List<ItemRequestItemDto> items) {
-        ItemRequestDto dto = new ItemRequestDto();
-        dto.setId(request.getId());
-        dto.setDescription(request.getDescription());
-        dto.setRequestorId(request.getRequestor().getId());
-        dto.setCreated(request.getCreated());
-        dto.setItems(items);
-        return dto;
+                .map(request -> ItemRequestMapper.toDto(
+                        request, itemsByRequest.getOrDefault(request.getId(), List.of()))).collect(Collectors.toList());
     }
 
     private User findUser(Long userId) {

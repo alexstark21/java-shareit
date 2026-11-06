@@ -1,16 +1,12 @@
 package ru.practicum.shareit;
 
+import jakarta.persistence.EntityManager;
 import ru.practicum.shareit.booking.Booking;
-import ru.practicum.shareit.booking.BookingRepository;
 import ru.practicum.shareit.booking.BookingStatus;
 import ru.practicum.shareit.item.Comment;
-import ru.practicum.shareit.item.CommentRepository;
 import ru.practicum.shareit.item.Item;
-import ru.practicum.shareit.item.ItemRepository;
 import ru.practicum.shareit.request.ItemRequest;
-import ru.practicum.shareit.request.ItemRequestRepository;
 import ru.practicum.shareit.user.User;
-import ru.practicum.shareit.user.UserRepository;
 
 import java.time.LocalDateTime;
 
@@ -18,18 +14,19 @@ public final class IntegrationTestData {
     private IntegrationTestData() {
     }
 
-    public static User user(UserRepository repository, String name, String email) {
+    public static User user(EntityManager entityManager, String name, String email) {
         User user = new User();
         user.setName(name);
         user.setEmail(email);
-        return repository.save(user);
+        entityManager.persist(user);
+        return user;
     }
 
-    public static Item item(ItemRepository repository, User owner, String name, boolean available) {
-        return item(repository, owner, name, available, null);
+    public static Item item(EntityManager entityManager, User owner, String name, boolean available) {
+        return item(entityManager, owner, name, available, null);
     }
 
-    public static Item item(ItemRepository repository, User owner, String name,
+    public static Item item(EntityManager entityManager, User owner, String name,
                             boolean available, Long requestId) {
         Item item = new Item();
         item.setName(name);
@@ -37,10 +34,11 @@ public final class IntegrationTestData {
         item.setAvailable(available);
         item.setOwner(owner);
         item.setRequestId(requestId);
-        return repository.save(item);
+        entityManager.persist(item);
+        return item;
     }
 
-    public static Booking booking(BookingRepository repository, Item item, User booker,
+    public static Booking booking(EntityManager entityManager, Item item, User booker,
                                   LocalDateTime start, LocalDateTime end, BookingStatus status) {
         Booking booking = new Booking();
         booking.setItem(item);
@@ -48,24 +46,27 @@ public final class IntegrationTestData {
         booking.setStart(start);
         booking.setEnd(end);
         booking.setStatus(status);
-        return repository.save(booking);
+        entityManager.persist(booking);
+        return booking;
     }
 
-    public static Comment comment(CommentRepository repository, Item item, User author, String text) {
+    public static Comment comment(EntityManager entityManager, Item item, User author, String text) {
         Comment comment = new Comment();
         comment.setItem(item);
         comment.setAuthor(author);
         comment.setText(text);
         comment.setCreated(LocalDateTime.now().minusMinutes(1));
-        return repository.save(comment);
+        entityManager.persist(comment);
+        return comment;
     }
 
-    public static ItemRequest request(ItemRequestRepository repository, User requestor,
+    public static ItemRequest request(EntityManager entityManager, User requestor,
                                       String description, LocalDateTime created) {
         ItemRequest request = new ItemRequest();
         request.setRequestor(requestor);
         request.setDescription(description);
         request.setCreated(created);
-        return repository.save(request);
+        entityManager.persist(request);
+        return request;
     }
 }

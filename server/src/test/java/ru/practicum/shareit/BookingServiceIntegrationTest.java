@@ -1,5 +1,7 @@
 package ru.practicum.shareit;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,9 +13,7 @@ import ru.practicum.shareit.exception.BadRequestException;
 import ru.practicum.shareit.exception.ConflictException;
 import ru.practicum.shareit.exception.NotFoundException;
 import ru.practicum.shareit.item.Item;
-import ru.practicum.shareit.item.ItemRepository;
 import ru.practicum.shareit.user.User;
-import ru.practicum.shareit.user.UserRepository;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -27,14 +27,8 @@ class BookingServiceIntegrationTest {
     @Autowired
     private BookingService bookingService;
 
-    @Autowired
-    private BookingRepository bookingRepository;
-
-    @Autowired
-    private ItemRepository itemRepository;
-
-    @Autowired
-    private UserRepository userRepository;
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private User owner;
     private User booker;
@@ -43,10 +37,10 @@ class BookingServiceIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        owner = IntegrationTestData.user(userRepository, "Owner", "booking-owner@example.com");
-        booker = IntegrationTestData.user(userRepository, "Booker", "booking-booker@example.com");
-        outsider = IntegrationTestData.user(userRepository, "Outsider", "booking-outsider@example.com");
-        item = IntegrationTestData.item(itemRepository, owner, "Projector", true);
+        owner = IntegrationTestData.user(entityManager, "Owner", "booking-owner@example.com");
+        booker = IntegrationTestData.user(entityManager, "Booker", "booking-booker@example.com");
+        outsider = IntegrationTestData.user(entityManager, "Outsider", "booking-outsider@example.com");
+        item = IntegrationTestData.item(entityManager, owner, "Projector", true);
     }
 
     @Test
@@ -68,7 +62,7 @@ class BookingServiceIntegrationTest {
     @Test
     void shouldRejectBookingOfUnavailableItem() {
         item.setAvailable(false);
-        itemRepository.save(item);
+        entityManager.flush();
 
         assertThrows(BadRequestException.class,
                 () -> bookingService.create(booker.getId(), bookingDto()));
@@ -87,7 +81,7 @@ class BookingServiceIntegrationTest {
     void shouldRejectOverlappingApprovedBooking() {
         LocalDateTime start = LocalDateTime.now().plusDays(2);
         LocalDateTime end = start.plusHours(2);
-        IntegrationTestData.booking(bookingRepository, item, outsider,
+        IntegrationTestData.booking(entityManager, item, outsider,
                 start.minusMinutes(30), end.plusMinutes(30), BookingStatus.APPROVED);
         BookingCreateDto dto = new BookingCreateDto();
         dto.setItemId(item.getId());
@@ -177,6 +171,6 @@ class BookingServiceIntegrationTest {
     }
 
     private Booking saveBooking(LocalDateTime start, LocalDateTime end, BookingStatus status) {
-        return IntegrationTestData.booking(bookingRepository, item, booker, start, end, status);
+        return IntegrationTestData.booking(entityManager, item, booker, start, end, status);
     }
 }

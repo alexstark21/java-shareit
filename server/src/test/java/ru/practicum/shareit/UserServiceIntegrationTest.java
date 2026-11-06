@@ -1,5 +1,7 @@
 package ru.practicum.shareit;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -9,7 +11,6 @@ import ru.practicum.shareit.exception.ConflictException;
 import ru.practicum.shareit.exception.NotFoundException;
 import ru.practicum.shareit.user.User;
 import ru.practicum.shareit.user.UserDto;
-import ru.practicum.shareit.user.UserRepository;
 import ru.practicum.shareit.user.UserService;
 
 import java.util.Collection;
@@ -23,8 +24,8 @@ class UserServiceIntegrationTest {
     @Autowired
     private UserService userService;
 
-    @Autowired
-    private UserRepository userRepository;
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Test
     void shouldCreateAndReadUser() {
@@ -40,7 +41,7 @@ class UserServiceIntegrationTest {
 
     @Test
     void shouldRejectDuplicateEmailIgnoringCase() {
-        IntegrationTestData.user(userRepository, "First", "same@example.com");
+        IntegrationTestData.user(entityManager, "First", "same@example.com");
         UserDto duplicate = new UserDto(null, "Second", "SAME@example.com");
 
         assertThrows(ConflictException.class, () -> userService.createUser(duplicate));
@@ -48,7 +49,7 @@ class UserServiceIntegrationTest {
 
     @Test
     void shouldUpdateOnlyProvidedFields() {
-        User user = IntegrationTestData.user(userRepository, "Old name", "old@example.com");
+        User user = IntegrationTestData.user(entityManager, "Old name", "old@example.com");
         UserDto update = new UserDto(null, "New name", null);
 
         UserDto updated = userService.updateUser(user.getId(), update);
@@ -59,8 +60,8 @@ class UserServiceIntegrationTest {
 
     @Test
     void shouldRejectEmailAlreadyUsedByAnotherUser() {
-        User first = IntegrationTestData.user(userRepository, "First", "first@example.com");
-        IntegrationTestData.user(userRepository, "Second", "second@example.com");
+        User first = IntegrationTestData.user(entityManager, "First", "first@example.com");
+        IntegrationTestData.user(entityManager, "Second", "second@example.com");
         UserDto update = new UserDto(null, "First", "second@example.com");
 
         assertThrows(ConflictException.class, () -> userService.updateUser(first.getId(), update));
@@ -68,8 +69,8 @@ class UserServiceIntegrationTest {
 
     @Test
     void shouldReturnAllUsers() {
-        IntegrationTestData.user(userRepository, "First", "first@example.com");
-        IntegrationTestData.user(userRepository, "Second", "second@example.com");
+        IntegrationTestData.user(entityManager, "First", "first@example.com");
+        IntegrationTestData.user(entityManager, "Second", "second@example.com");
 
         Collection<UserDto> users = userService.getAllUsers();
 
@@ -78,11 +79,13 @@ class UserServiceIntegrationTest {
 
     @Test
     void shouldDeleteExistingUser() {
-        User user = IntegrationTestData.user(userRepository, "Delete", "delete@example.com");
+        User user = IntegrationTestData.user(entityManager, "Delete", "delete@example.com");
 
         userService.deleteUser(user.getId());
+        entityManager.flush();
+        entityManager.clear();
 
-        assertFalse(userRepository.existsById(user.getId()));
+        assertNull(entityManager.find(User.class, user.getId()));
     }
 
     @Test

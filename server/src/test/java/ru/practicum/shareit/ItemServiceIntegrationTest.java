@@ -1,18 +1,19 @@
 package ru.practicum.shareit;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
-import ru.practicum.shareit.booking.BookingRepository;
 import ru.practicum.shareit.booking.BookingStatus;
 import ru.practicum.shareit.exception.BadRequestException;
 import ru.practicum.shareit.exception.NotFoundException;
 import ru.practicum.shareit.item.*;
+import ru.practicum.shareit.request.ItemRequest;
 import ru.practicum.shareit.user.User;
-import ru.practicum.shareit.user.UserRepository;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -26,25 +27,16 @@ class ItemServiceIntegrationTest {
     @Autowired
     private ItemService itemService;
 
-    @Autowired
-    private ItemRepository itemRepository;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private CommentRepository commentRepository;
-
-    @Autowired
-    private BookingRepository bookingRepository;
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private User owner;
     private User renter;
 
     @BeforeEach
     void setUp() {
-        owner = IntegrationTestData.user(userRepository, "Owner", "owner@example.com");
-        renter = IntegrationTestData.user(userRepository, "Renter", "renter@example.com");
+        owner = IntegrationTestData.user(entityManager, "Owner", "owner@example.com");
+        renter = IntegrationTestData.user(entityManager, "Renter", "renter@example.com");
     }
 
     @Test
@@ -53,13 +45,19 @@ class ItemServiceIntegrationTest {
         dto.setName("Drill");
         dto.setDescription("Cordless drill");
         dto.setAvailable(true);
-        dto.setRequestId(42L);
+        ItemRequest request = IntegrationTestData.request(entityManager, renter,
+                "Need a drill", LocalDateTime.now());
+        dto.setRequestId(request.getId());
 
         ItemDto created = itemService.createItem(owner.getId(), dto);
 
         assertNotNull(created.getId());
-        assertEquals(42L, created.getRequestId());
-        assertEquals(owner.getId(), itemRepository.findById(created.getId()).orElseThrow().getOwner().getId());
+        assertEquals(request.getId(), created.getRequestId());
+        entityManager.flush();
+        entityManager.clear();
+        Item saved = entityManager.find(Item.class, created.getId());
+        assertEquals(owner.getId(), saved.getOwner().getId());
+        assertEquals(request.getId(), saved.getRequestId());
     }
 
     @Test
@@ -76,7 +74,7 @@ class ItemServiceIntegrationTest {
 
     @Test
     void shouldUpdateItemFieldsForOwner() {
-        Item item = IntegrationTestData.item(itemRepository, owner, "Old", true);
+        Item item = IntegrationTestData.item(entityManager, owner, "Old", true);
         ItemUpdateDto update = new ItemUpdateDto();
         update.setName("New");
         update.setAvailable(false);
@@ -90,7 +88,7 @@ class ItemServiceIntegrationTest {
 
     @Test
     void shouldNotAllowAnotherUserToUpdateItem() {
-        Item item = IntegrationTestData.item(itemRepository, owner, "Owned", true);
+        Item item = IntegrationTestData.item(entityManager, owner, "Owned", true);
         ItemUpdateDto update = new ItemUpdateDto();
 
         assertThrows(NotFoundException.class,
@@ -99,13 +97,13 @@ class ItemServiceIntegrationTest {
 
     @Test
     void shouldReturnItemWithCommentsAndBookingForOwner() {
-        Item item = IntegrationTestData.item(itemRepository, owner, "Camera", true);
+        Item item = IntegrationTestData.item(entityManager, owner, "Camera", true);
         LocalDateTime now = LocalDateTime.now();
-        IntegrationTestData.booking(bookingRepository, item, renter,
+        IntegrationTestData.booking(entityManager, item, renter,
                 now.minusDays(3), now.minusDays(2), BookingStatus.APPROVED);
-        IntegrationTestData.booking(bookingRepository, item, renter,
+        IntegrationTestData.booking(entityManager, item, renter,
                 now.plusDays(2), now.plusDays(3), BookingStatus.APPROVED);
-        IntegrationTestData.comment(commentRepository, item, renter, "Good camera");
+        IntegrationTestData.comment(entityManager, item, renter, "Good camera");
 
         ItemDto dto = itemService.getItemById(item.getId(), owner.getId());
 
@@ -118,9 +116,9 @@ class ItemServiceIntegrationTest {
 
     @Test
     void shouldHideBookingDetailsFromNonOwner() {
-        Item item = IntegrationTestData.item(itemRepository, owner, "Camera", true);
+        Item item = IntegrationTestData.item(entityManager, owner, "Camera", true);
         LocalDateTime now = LocalDateTime.now();
-        IntegrationTestData.booking(bookingRepository, item, renter,
+        IntegrationTestData.booking(entityManager, item, renter,
                 now.plusDays(2), now.plusDays(3), BookingStatus.APPROVED);
 
         ItemDto dto = itemService.getItemById(item.getId(), renter.getId());
@@ -131,13 +129,13 @@ class ItemServiceIntegrationTest {
 
     @Test
     void shouldReturnOwnerItemsWithCommentsAndBookingMetadata() {
-        Item item = IntegrationTestData.item(itemRepository, owner, "Laptop", true);
+        Item item = IntegrationTestData.item(entityManager, owner, "Laptop", true);
         LocalDateTime now = LocalDateTime.now();
-        IntegrationTestData.booking(bookingRepository, item, renter,
+        IntegrationTestData.booking(entityManager, item, renter,
                 now.minusDays(3), now.minusDays(2), BookingStatus.APPROVED);
-        IntegrationTestData.booking(bookingRepository, item, renter,
+        IntegrationTestData.booking(entityManager, item, renter,
                 now.plusDays(2), now.plusDays(3), BookingStatus.APPROVED);
-        IntegrationTestData.comment(commentRepository, item, renter, "Works well");
+        IntegrationTestData.comment(entityManager, item, renter, "Works well");
 
         Collection<ItemDto> items = itemService.getOwnerItems(owner.getId());
 
@@ -150,9 +148,9 @@ class ItemServiceIntegrationTest {
 
     @Test
     void shouldSearchOnlyAvailableItemsByNameOrDescription() {
-        IntegrationTestData.item(itemRepository, owner, "Blue bicycle", true);
-        IntegrationTestData.item(itemRepository, owner, "Red bicycle", false);
-        IntegrationTestData.item(itemRepository, owner, "Desk lamp", true);
+        IntegrationTestData.item(entityManager, owner, "Blue bicycle", true);
+        IntegrationTestData.item(entityManager, owner, "Red bicycle", false);
+        IntegrationTestData.item(entityManager, owner, "Desk lamp", true);
 
         Collection<ItemDto> found = itemService.searchItems("BICYCLE");
 
@@ -163,8 +161,8 @@ class ItemServiceIntegrationTest {
 
     @Test
     void shouldAddCommentAfterCompletedApprovedBooking() {
-        Item item = IntegrationTestData.item(itemRepository, owner, "Table", true);
-        IntegrationTestData.booking(bookingRepository, item, renter,
+        Item item = IntegrationTestData.item(entityManager, owner, "Table", true);
+        IntegrationTestData.booking(entityManager, item, renter,
                 LocalDateTime.now().minusDays(2), LocalDateTime.now().minusDays(1),
                 BookingStatus.APPROVED);
         CommentCreateDto dto = new CommentCreateDto();
@@ -179,7 +177,7 @@ class ItemServiceIntegrationTest {
 
     @Test
     void shouldRejectCommentWithoutCompletedBooking() {
-        Item item = IntegrationTestData.item(itemRepository, owner, "Table", true);
+        Item item = IntegrationTestData.item(entityManager, owner, "Table", true);
         CommentCreateDto dto = new CommentCreateDto();
         dto.setText("Not rented");
 
